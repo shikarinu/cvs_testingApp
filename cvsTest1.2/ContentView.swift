@@ -15,7 +15,7 @@ let photoArray = [
     PhotoData(imageName: "itzy_img", artist: "ITZY"),
     PhotoData(imageName: "ive_img", artist: "IVE"),
     PhotoData(imageName: "stray_kids_img", artist: "Stray_Kids"),
-]
+].sorted { $0.artist.localizedCaseInsensitiveCompare($1.artist) == .orderedAscending }
 
 // アーティストごとの曲データとYouTube URLを格納する辞書
 var artistSongs: [String: [String: String]] = [:]
@@ -51,16 +51,25 @@ func loadCSV() {
     }
 }
 
+// 共通の画像表示と丸くする処理
+struct RoundImage: View {
+    var imageName: String
+    
+    var body: some View {
+        Image(imageName)
+            .resizable()
+            .frame(width: 60, height: 60)
+            .cornerRadius(30)
+    }
+}
+
 // RowView 構造体の定義
 struct RowView: View {
     var photo: PhotoData
     
     var body: some View {
         HStack {
-            Image(photo.imageName)
-                .resizable()
-                .frame(width: 60, height: 60)
-                .cornerRadius(30) // 画像を丸くするための設定
+            RoundImage(imageName: photo.imageName)
                 .padding(.trailing, 10)
             Text(photo.artist)
                 .font(.title)
@@ -78,40 +87,27 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             List(photoArray) { photo in
-                NavigationLink(destination: SongListView(artist: photo.artist)) { // クリックでSongListViewへ遷移
+                NavigationLink(destination: SongListView(artist: photo.artist)) {
                     RowView(photo: photo)
                 }
             }
-            .navigationBarTitleDisplayMode(.inline) // ナビゲーションタイトルをインラインに設定
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    HStack {
-                        Image(photoArray[0].imageName) // ここでは1つの画像を使用しますが、実際には必要に応じて変更します
-                            .resizable()
-                            .frame(width: 30, height: 30)
-                            .clipShape(Circle())
-                        Text("アーティスト")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                    }
-                }
-            }
+            .navigationBarTitle("アーティスト一覧")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
 
 // SongListView 構造体の定義
 struct SongListView: View {
-    var artist: String // アーティスト名を受け取るプロパティ
+    var artist: String
     
     var body: some View {
         VStack {
             HStack {
-                Image(artist.lowercased() + "_img") // アーティスト画像を表示
-                    .resizable()
+                RoundImage(imageName: artist.lowercased() + "_img")
+                    .cornerRadius(50)
                     .frame(width: 60, height: 60)
-                    .cornerRadius(50) // 画像を丸くするための設定
-                Text(artist) // アーティスト名を画像の横に表示
+                Text(artist)
                     .font(.largeTitle)
                     .padding(.leading, 10)
             }
@@ -121,11 +117,9 @@ struct SongListView: View {
             if let songs = artistSongs[artist] {
                 List(songs.keys.sorted(), id: \.self) { song in
                     if let url = songs[song] {
-                        NavigationLink(destination: SongDetailView(artist: artist, song: song, url: url)) { // クリックでSongDetailViewへ遷移
+                        NavigationLink(destination: SongDetailView(artist: artist, song: song, url: url)) {
                             HStack {
-                                Image(artist.lowercased() + "_img")
-                                    .resizable()
-                                    .frame(width: 60, height: 60)
+                                RoundImage(imageName: artist.lowercased() + "_img")
                                     .cornerRadius(20)
                                     .padding(.trailing, 10)
                                 Text(song)
@@ -154,18 +148,17 @@ struct SongDetailView: View {
         VStack {
             // YouTube動画の埋め込み
             WebView(urlString: url)
-                .edgesIgnoringSafeArea(.top) // 上部のセーフエリアを無視
-                .frame(height: 300) // 動画プレイヤーの高さ
+                .edgesIgnoringSafeArea(.top)
+                .frame(height: 300)
                 .cornerRadius(10)
             
             HStack {
-                Image(artist.lowercased() + "_img") // アーティストアイコンを表示
-                    .resizable()
-                    .frame(width: 80, height: 80)
+                RoundImage(imageName: artist.lowercased() + "_img")
                     .cornerRadius(20)
+                    .frame(width: 80, height: 80)
                     .padding(.trailing, 10)
-                Text(song) // 曲名をアイコンの横に表示
-                    .font(.largeTitle)
+                Text(song)
+                    .font(.title)
             }
             .padding()
             
@@ -180,7 +173,7 @@ struct WebView: UIViewRepresentable {
     
     func makeUIView(context: Context) -> WKWebView {
         let webView = WKWebView()
-        webView.navigationDelegate = context.coordinator // navigationDelegateを設定
+        webView.navigationDelegate = context.coordinator
         return webView
     }
     
@@ -203,7 +196,7 @@ struct WebView: UIViewRepresentable {
         }
         
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            if (error as NSError).code == 102 { // 埋め込みが拒否された場合のエラーコード
+            if (error as NSError).code == 102 {
                 webView.loadHTMLString("<html><body><h1>この動画は埋め込みできません。</h1><p>YouTubeアプリでご覧ください。</p><a href='\(parent.urlString)'>YouTubeで開く</a></body></html>", baseURL: nil)
             }
         }
@@ -214,11 +207,5 @@ struct WebView: UIViewRepresentable {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
-    }
-}
-
-struct RowView_Previews: PreviewProvider {
-    static var previews: some View {
-        RowView(photo: photoArray[0])
     }
 }
